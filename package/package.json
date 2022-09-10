@@ -1,0 +1,35 @@
+{
+  "name": "@solworks/soltoolkit-sdk",
+  "version": "0.0.1",
+  "description": "",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "/build"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf ./build",
+    "build": "npm run clean && npx tsc",
+    "build::publish::patch": "npm run build && npm version patch && npm publish --access=public",
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write"
+  },
+  "keywords": [],
+  "author": "Zhe SolWorks",
+  "license": "Affero GPL",
+  "dependencies": {
+    "@solana/buffer-layout": "^4.0.0",
+    "@solana/spl-token": "^0.3.4",
+    "@solana/web3.js": "^1.54.0",
+    "@types/bn.js": "^5.1.0",
+    "@types/node": "^18.7.13",
+    "@types/node-fetch": "^2.6.2",
+    "bn.js": "^5.2.1",
+    "decimal.js": "^10.4.0",
+    "typedoc": "^0.23.11",
+    "typescript": "^4.8.2"
+  },
+  "devDependencies": {
+    "prettier": "^2.7.1"
+  }
+}
