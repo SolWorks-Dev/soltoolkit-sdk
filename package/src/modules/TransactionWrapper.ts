@@ -91,7 +91,7 @@ export class TransactionWrapper {
         return signature;
     }
 
-    public async addBlockhashAndFeePayer(feePayer?: PublicKey): Promise<Transaction> {
+    public async addBlockhashAndFeePayer(feePayer?: PublicKey) {
         const latestBlockhash = await this._connection.getLatestBlockhash();
         this._transaction.recentBlockhash = latestBlockhash.blockhash;
         this._transaction.feePayer = feePayer || this._feePayer || this._signer;
@@ -103,7 +103,7 @@ export class TransactionWrapper {
         // this._logger.debug('blockhash:', this._transaction.recentBlockhash);
         // this._logger.debug('fee payer:', this._transaction.feePayer.toBase58());
 
-        return this._transaction;
+        return this;
     }
 
     public async sign({
@@ -113,10 +113,14 @@ export class TransactionWrapper {
     }: {
         wallet?: IWallet;
         signer?: Signer;
-        tx: Transaction;
+        tx?: Transaction;
     }): Promise<Transaction> {
         if (!wallet && !signer) {
             throw new Error('No wallet or signer provided');
+        }
+
+        if (tx === undefined) {
+            tx = this._transaction;
         }
 
         if (wallet) {
