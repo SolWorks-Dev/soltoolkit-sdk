@@ -4,7 +4,7 @@ import { ITransfer } from '../interfaces/ITransfer';
 import { Logger } from './Logger';
 import { TransactionBuilder } from './TransactionBuilder';
 
-type TokenType = 'SOL' | 'SPL';
+export type TokenType = 'SOL' | 'SPL';
 
 export class Disperse {
     private _config: IDisperseConstructor;
@@ -87,11 +87,7 @@ export class Disperse {
     }
 }
 
-export class DisperseParser {
-    private constructor() {}
-}
-
-interface IDisperseConstructor {
+export interface IDisperseConstructor {
     tokenType: TokenType;
     mint?: PublicKey;
     maximumAmount?: number;

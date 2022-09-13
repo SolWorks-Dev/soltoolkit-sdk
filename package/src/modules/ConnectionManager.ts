@@ -153,7 +153,6 @@ export class ConnectionManager {
         return ConnectionManager._instance;
     }
 
-    // allowDefault value is ignored for airdrop
     public conn({
         changeConn = true,
         airdrop = false
@@ -270,7 +269,7 @@ export class ConnectionManager {
     }
 }
 
-interface IConnectionManagerConstructor {
+export interface IConnectionManagerConstructor {
     network: Cluster;
     endpoint?: string;
     endpoints?: string[];
@@ -279,9 +278,9 @@ interface IConnectionManagerConstructor {
     mode?: Mode;
 }
 
-interface IRPCSummary {
+export interface IRPCSummary {
     endpoint: string;
     speedMs: number;
 }
 
-type Mode = 'single' | 'first' | 'last' | 'round-robin' | 'random' | 'fastest' | 'weighted';
+export type Mode = 'single' | 'first' | 'last' | 'round-robin' | 'random' | 'fastest' | 'weighted';
