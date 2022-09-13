@@ -7,7 +7,7 @@
   </p>
 </div>
 
-# SolToolkit v0.0.1
+# SolToolkit
 This repository provides open source access to SolToolkit (Typescript) SDK.
 
 ## Installation
