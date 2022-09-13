@@ -77,19 +77,15 @@ const receiver = Keypair.generate();
   let tx = builder.build();
 
   // feed transaction into TransactionWrapper
-  const wrapper = TransactionWrapper.create({
+  const wrapper = await TransactionWrapper.create({
     connectionManager: cm,
     transaction: tx,
     signer: sender.publicKey,
-  });
-
-  // add fee payer and blockhash
-  const txWithBlockhash = await wrapper.addBlockhashAndFeePayer();
+  }).addBlockhashAndFeePayer();
 
   // sign the transaction
   const signedTx = await wrapper.sign({
     signer: sender as Signer,
-    tx: txWithBlockhash,
   });
 
   // send and confirm the transaction

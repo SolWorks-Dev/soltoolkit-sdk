@@ -1,4 +1,3 @@
-import { Logger } from "../package/src/modules/Logger";
 import {
   Commitment,
   Keypair,
@@ -11,8 +10,8 @@ import {
   Disperse,
   TransactionBuilder,
   TransactionWrapper,
-} from "../package/src/index";
-import { ITransfer } from "../package/src/interfaces/ITransfer";
+  Logger
+} from "@solworks/soltoolkit-sdk";
 
 const COMMITMENT: Commitment = "confirmed";
 const NO_OF_RECEIVERS = 10_000;
@@ -131,7 +130,10 @@ const sender = Keypair.fromSecretKey(
   logger.debug("Receivers generated");
 
   // generate transactions
-  const transfers: ITransfer[] = [];
+  const transfers: {
+    amount: number;
+    recipient: string;
+  }[] = [];
   const rentCost = (NO_OF_RECEIVERS+1) * 5_000;
   const transferAmount = Math.floor(
     (senderBal - rentCost) / NO_OF_RECEIVERS

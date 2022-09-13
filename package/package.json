@@ -1,9 +1,10 @@
 {
   "name": "@solworks/soltoolkit-sdk",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "repository": "https://github.com/SolWorks-Dev/soltoolkit-sdk",
   "files": [
     "/build"
   ],
@@ -12,7 +13,8 @@
     "clean": "rm -rf ./build",
     "build": "npm run clean && npx tsc",
     "build::publish::patch": "npm run build && npm version patch && npm publish --access=public",
-    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write"
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
+    "publish": "npm publish --access=public"
   },
   "keywords": [],
   "author": "Zhe SolWorks",

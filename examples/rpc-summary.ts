@@ -1,10 +1,8 @@
 import { Commitment } from "@solana/web3.js";
-import { ConnectionManager } from "../package/src/index";
-import { Logger } from "../package/src/modules/Logger";
-
-const COMMITMENT: Commitment = "max";
+import { Logger, ConnectionManager } from "@solworks/soltoolkit-sdk";
 
 (async () => {
+  const COMMITMENT: Commitment = "max";
   const logger = new Logger("example");
 
   // create connection manager
@@ -25,7 +23,7 @@ const COMMITMENT: Commitment = "max";
   logger.debug(JSON.stringify(summary, null, 2));
 
   // get fastest endpoint
-  const fastest = cm.fastestEndpoint;
+  const fastest = cm._fastestEndpoint;
   logger.debug(`Fastest endpoint: ${fastest}`);
 
   // get current connection endpoint
