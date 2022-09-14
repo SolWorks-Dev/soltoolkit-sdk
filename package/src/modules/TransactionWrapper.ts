@@ -42,7 +42,7 @@ export class TransactionWrapper {
         } else if (rpcEndpoint) {
             conn = new Connection(rpcEndpoint, config);
         } else if (connectionManager) {
-            conn = connectionManager.conn({ changeConn });
+            conn = connectionManager.connSync({ changeConn });
         } else {
             throw new Error('No connection or rpc endpoint provided');
         }
@@ -169,7 +169,7 @@ export class TransactionWrapper {
     }) {
         // if connection is not provided, use connection manager
         if (connection === undefined && connectionManager !== undefined) {
-            connection = connectionManager.conn({ changeConn, airdrop });
+            connection = connectionManager.connSync({ changeConn, airdrop });
         } else if (connection === undefined && connectionManager === undefined) {
             throw new Error('No connection or connection manager provided');
         }

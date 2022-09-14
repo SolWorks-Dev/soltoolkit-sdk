@@ -1,6 +1,6 @@
 {
   "name": "@solworks/soltoolkit-sdk",
-  "version": "0.0.6",
+  "version": "0.0.9",
   "description": "SolToolkit SDK, by SolWorks. A set of tools by developers for developers.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -28,10 +28,10 @@
     "@types/node-fetch": "^2.6.2",
     "bn.js": "^5.2.1",
     "decimal.js": "^10.4.0",
-    "typedoc": "^0.23.11",
     "typescript": "^4.8.2"
   },
   "devDependencies": {
-    "prettier": "^2.7.1"
+    "prettier": "^2.7.1",
+    "typedoc": "^0.23.14"
   }
 }
