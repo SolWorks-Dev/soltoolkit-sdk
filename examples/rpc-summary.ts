@@ -1,5 +1,6 @@
 import { Commitment } from "@solana/web3.js";
-import { Logger, ConnectionManager } from "@solworks/soltoolkit-sdk";
+import { Logger, ConnectionManager } from "../package/build/index";
+
 
 (async () => {
   const COMMITMENT: Commitment = "max";
@@ -14,7 +15,7 @@ import { Logger, ConnectionManager } from "@solworks/soltoolkit-sdk";
       "https://mango.devnet.rpcpool.com",
       "https://rpc.ankr.com/solana_devnet",
     ],
-    mode: "fastest",
+    mode: "highest-slot",
     network: "devnet"
   });
 
@@ -26,7 +27,11 @@ import { Logger, ConnectionManager } from "@solworks/soltoolkit-sdk";
   const fastest = cm._fastestEndpoint;
   logger.debug(`Fastest endpoint: ${fastest}`);
 
+  // get highest slot endpoint
+  const highestSlot = cm._highestSlotEndpoint;
+  logger.debug(`Highest slot endpoint: ${highestSlot}`);
+
   // get current connection endpoint
-  const current = cm.conn({ changeConn: false }).rpcEndpoint;
+  const current = cm.connSync({ changeConn: false }).rpcEndpoint;
   logger.debug(`Current endpoint: ${current}`);
 })();

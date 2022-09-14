@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@solana/web3.js": "^1.54.0",
-    "@solworks/soltoolkit-sdk": "^0.0.3",
+    "@solworks/soltoolkit-sdk": "^0.0.9",
     "@types/node-fetch": "^2.6.2"
   }
 }

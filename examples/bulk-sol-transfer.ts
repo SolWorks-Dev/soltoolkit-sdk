@@ -67,7 +67,7 @@ const sender = Keypair.fromSecretKey(
 
       // airdrop sol to the generated address
       const airdropSig = await cm
-        .conn({ airdrop: true })
+        .connSync({ airdrop: true })
         .requestAirdrop(keypair.publicKey, LAMPORTS_PER_SOL);
       logger.debug("Airdropped 1 SOL to", sender.publicKey.toBase58());
 
@@ -117,7 +117,7 @@ const sender = Keypair.fromSecretKey(
   logger.debug("Fetching balance of", sender.publicKey.toBase58());
   let senderBal = await cm
     // default value for changeConn = true
-    .conn({ changeConn: true })
+    .connSync({ changeConn: true })
     .getBalance(sender.publicKey, COMMITMENT);
   logger.debug(`Sender balance: ${senderBal}`);
 
@@ -160,7 +160,7 @@ const sender = Keypair.fromSecretKey(
     for (let i = 0; i < txChunks.length; i++) {
       logger.debug(`Sending transactions ${i + 1}/${txChunks.length}`);
       const txChunk = txChunks[i];
-      const conn = cm.conn({ changeConn: true });
+      const conn = cm.connSync({ changeConn: true });
 
       await Promise.all(
         txChunk.map(async (tx: Transaction, i: number) => {
@@ -196,7 +196,7 @@ const sender = Keypair.fromSecretKey(
     // fetch balance of the generated address
     logger.debug("Fetching balance of:", sender.publicKey.toBase58());
     senderBal = await cm
-      .conn({ changeConn: true })
+      .connSync({ changeConn: true })
       .getBalance(sender.publicKey, COMMITMENT);
     logger.debug(`Sender balance: ${senderBal}`);
 
@@ -213,7 +213,7 @@ const sender = Keypair.fromSecretKey(
       );
 
       // cycle to new connection to avoid rate limiting
-      let conn = cm.conn({ changeConn: true });
+      let conn = cm.connSync({ changeConn: true });
 
       // fetch balances
       const results = await Promise.all(

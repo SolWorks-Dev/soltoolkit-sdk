@@ -31,7 +31,7 @@ const receiver = Keypair.generate();
   // airdrop sol to the generated address
   logger.debug("Airdropping 1 SOL to:", sender.publicKey.toBase58());
   const airdropSig = await cm
-    .conn({ airdrop: true })
+    .connSync({ airdrop: true })
     .requestAirdrop(sender.publicKey, LAMPORTS_PER_SOL);
 
   // confirm airdrop tx
@@ -46,12 +46,12 @@ const receiver = Keypair.generate();
 
   // fetch balance of the generated address
   logger.debug("Fetching balance of:", sender.publicKey.toBase58());
-  let senderBal = await cm.conn({}).getBalance(sender.publicKey, COMMITMENT);
+  let senderBal = await cm.connSync({}).getBalance(sender.publicKey, COMMITMENT);
   logger.debug(`Sender balance: ${senderBal}`);
 
   logger.debug("Fetching balance of:", receiver.publicKey.toBase58());
   let receiverBal = await cm
-    .conn({})
+    .connSync({})
     .getBalance(receiver.publicKey, COMMITMENT);
   logger.debug(`Receiver balance: ${receiverBal}`);
 
@@ -97,10 +97,10 @@ const receiver = Keypair.generate();
 
   // fetch balance of the generated address
   logger.debug("Fetching balance of:", sender.publicKey.toBase58());
-  senderBal = await cm.conn({}).getBalance(sender.publicKey, COMMITMENT);
+  senderBal = await cm.connSync({}).getBalance(sender.publicKey, COMMITMENT);
   logger.debug(`Sender balance: ${senderBal}`);
 
   logger.debug("Fetching balance of:", receiver.publicKey.toBase58());
-  receiverBal = await cm.conn({}).getBalance(receiver.publicKey, COMMITMENT);
+  receiverBal = await cm.connSync({}).getBalance(receiver.publicKey, COMMITMENT);
   logger.debug(`Receiver balance: ${receiverBal}`);
 })();
