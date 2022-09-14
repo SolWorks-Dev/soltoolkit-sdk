@@ -1,5 +1,5 @@
 <div align="center">
-  <h1 style="margin-top:20px;">SolToolkit v0.0.1</h1>
+  <h1 style="margin-top:20px;">SolToolkit</h1>
   <p>
     <a href="https://www.npmjs.com/package/@solworks/soltoolkit-sdk"><img alt="SDK npm package" src="https://img.shields.io/npm/v/@solworks/soltoolkit-sdk" /></a>
     <a href="https://help.solworks.dev/"><img alt="Docs" src="https://img.shields.io/badge/docs-tutorials-blueviolet" /></a>
@@ -15,14 +15,47 @@ This repository provides open source access to SolToolkit (Typescript) SDK.
 npm i @solworks/soltoolkit-sdk
 ```
 
+## Modules
+
+### ConnectionManager
+ConnectionManager is a singleton class that manages web3.js Connection(s). It takes the following parameters on initialization using the async `getInstance()` method:
+```typescript
+{
+    network: Cluster;
+    endpoint?: string;
+    endpoints?: string[];
+    config?: ConnectionConfig;
+    commitment?: Commitment;
+    mode?: Mode;
+}
+```
+#### Parameters
+- `network` is the cluster to connect to, possible values are 'mainnet-beta', 'testnet', 'devnet', 'localnet'. This is required. If you do not pass in any values for `endpoint` or `endpoints`, the default endpoints for the network will be used.
+- `endpoint` is a single endpoint to connect to. This is optional.
+- `endpoints` is an array of endpoints to connect to. This is optional.
+- `config` is a web3.js ConnectionConfig object. This is optional.
+- `commitment` is the commitment level to use for transactions. This is optional, will default to 'max'.
+- `mode` is the Mode for the ConnectionManager. This is optional, will default to 'single'. Possible values are:
+  - 'single' - Uses the `endpoint` param, that falls back to the first endpoint provided in `endpoints`, that falls back to the default endpoints for the network.
+  - 'first' - Uses the first endpoint provided in `endpoints`. Throws an error if no endpoints are provided.
+  - 'last' - Uses the last endpoint provided in `endpoints`. Throws an error if no endpoints are provided.
+  - 'round-robin' - Uses the endpoints provided in `endpoints` in a round-robin fashion (cycles through each endpoint in sequence starting from the first). Throws an error if no endpoints are provided.
+  - 'random' - Uses a random endpoint provided in `endpoints`. Throws an error if no endpoints are provided.
+  - 'fastest' - Uses the fastest endpoint provided in `endpoints`. Throws an error if no endpoints are provided.
+  - 'highest-slot' - Uses the endpoint with the highest slot provided in `endpoints`. Throws an error if no endpoints are provided.
+
+#### Methods
+- `getInstance()` - Returns the singleton instance of the ConnectionManager. This method is async and must be awaited.
+- `getInstanceSync()` - Returns the singleton instance of the ConnectionManager. This method is synchronous. This method should only be used after initializing the ConnectionManager with `getInstance()`.
+- `conn()` - Returns a web3.js connection. This method will update the summary for each RPC to determine the 'fastest' or 'highest slot' endpoint. This method is async and must be awaited. 
+- `connSync()` - Returns a web3.js connection. This method will use fastest' or 'highest slot' endpoint determined during initialization. This method is synchronous.
+
 ## Examples
 ### Fetching the fastest RPC endpoint
 ```typescript
-import { ConnectionManager, Logger } from "@solworks/soltoolkit-sdk";
+import { ConnectionManager } from "@solworks/soltoolkit-sdk";
 
 (async () => {
-  const logger = new Logger("example");
-
   // create connection manager
   const cm = await ConnectionManager.getInstance({
     commitment: "max",
@@ -37,8 +70,32 @@ import { ConnectionManager, Logger } from "@solworks/soltoolkit-sdk";
   });
 
   // get fastest endpoint
-  const fastest = cm._fastestEndpoint;
-  logger.debug(`Fastest endpoint: ${fastest}`);
+  const fastestEndpoint = cm._fastestEndpoint;
+  console.log(`Fastest endpoint: ${fastestEndpoint}`);
+})();
+```
+
+### Fetching the highest slot RPC endpoint
+```typescript
+import { ConnectionManager, Logger } from "@solworks/soltoolkit-sdk";
+
+(async () => {
+  // create connection manager
+  const cm = await ConnectionManager.getInstance({
+    commitment: "max",
+    endpoints: [
+      "https://api.devnet.solana.com",
+      "https://solana-devnet-rpc.allthatnode.com",
+      "https://mango.devnet.rpcpool.com",
+      "https://rpc.ankr.com/solana_devnet",
+    ],
+    mode: "highest-slot",
+    network: "devnet"
+  });
+
+  // get highest slot endpoint
+  const highestSlotEndpoint = cm._highestSlotEndpoint;
+  console.log(`Highest slot endpoint: ${_highestSlotEndpoint}`);
 })();
 ```
 
@@ -98,7 +155,7 @@ const receiver = Keypair.generate();
 
   // airdrop sol to the generated address
   const airdropSig = await cm
-    .conn({ airdrop: true })
+    .connSync({ airdrop: true })
     .requestAirdrop(sender.publicKey, LAMPORTS_PER_SOL);
 
   // confirm airdrop tx
@@ -175,7 +232,7 @@ const receiver = Keypair.generate();
 
   // airdrop sol to the generated address
   const airdropSig = await cm
-    .conn({ airdrop: true })
+    .connSync({ airdrop: true })
     .requestAirdrop(sender.publicKey, LAMPORTS_PER_SOL);
 
   // confirm airdrop tx
