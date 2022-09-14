@@ -2,10 +2,37 @@ import { Cluster, Commitment, Connection, ConnectionConfig } from '@solana/web3.
 import { ILogger } from '../interfaces/ILogger';
 import { Logger } from './Logger';
 
+/**
+ * Manager for one or more web3.js connection(s).
+ *
+ * @remarks
+ * This class is a singleton. Use the `getInstance()` method to get the instance.
+ *
+ * @beta
+ *
+ * @example
+ * ```typescript
+ * import { ConnectionManager } from "@solworks/soltoolkit-sdk";
+ *
+ * (async () => {
+ *  const cm = await ConnectionManager.getInstance({
+ *      commitment: COMMITMENT,
+ *      endpoints: [
+ *          "https://mango.devnet.rpcpool.com",
+ *          "https://api.devnet.solana.com",
+ *          "https://devnet.genesysgo.net",
+ *      ],
+ *      mode: "round-robin",
+ *      network: "devnet",
+ *  });
+ * })
+ * ```
+ */
 export class ConnectionManager {
     private static _instance: ConnectionManager;
     public _connection: Connection;
     public _fastestEndpoint: string;
+    public _highestSlotEndpoint: string;
     private _config: IConnectionManagerConstructor;
     private _logger: ILogger = new Logger('@soltoolkit/ConnectionManager');
 
@@ -14,11 +41,12 @@ export class ConnectionManager {
             network = 'mainnet-beta',
             endpoint,
             config,
-            commitment = 'confirmed',
+            commitment = 'processed',
             endpoints,
             mode = 'single'
         }: IConnectionManagerConstructor,
-        fastestEndpoint?: string
+        fastestEndpoint: string,
+        highestSlotEndpoint: string
     ) {
         let rpcUrl: string | undefined;
 
@@ -72,7 +100,7 @@ export class ConnectionManager {
                     if (endpoints && endpoints.length > 0) {
                         rpcUrl = endpoints[-1];
                     } else {
-                        throw new Error('No endpoints provided with mode "fallback"');
+                        throw new Error('No endpoints provided with mode "last"');
                     }
                 }
                 break;
@@ -88,18 +116,25 @@ export class ConnectionManager {
                     }
                 }
                 break;
-            // TODO
+            // uses the fastest endpoint determined in the static initialization
+            // no fallback support
             case 'fastest': {
-                if (endpoints && endpoints.length > 0 && fastestEndpoint) {
+                if (fastestEndpoint) {
                     rpcUrl = fastestEndpoint;
                 } else {
                     throw new Error('No fastest endpoint provided with mode "fastest"');
                 }
                 break;
             }
-            case 'weighted':
+            // uses the highest slot endpoint determined in the static initialization
+            // no fallback support
+            case 'highest-slot':
                 {
-                    throw new Error('Not implemented yet');
+                    if (highestSlotEndpoint) {
+                        rpcUrl = highestSlotEndpoint;
+                    } else {
+                        throw new Error('No highest slot endpoint provided with mode "highest-slot"');
+                    }
                 }
                 break;
             // uses endpoints array only, selects random item from array
@@ -137,29 +172,165 @@ export class ConnectionManager {
             mode
         };
         this._fastestEndpoint = fastestEndpoint || rpcUrl;
+        this._highestSlotEndpoint = highestSlotEndpoint || rpcUrl;
     }
 
-    public static async getInstance(values: IConnectionManagerConstructor) {
+    /**
+     * Builds and returns a singleton instance of the ConnectionManager class. This method runs a speed test on the provided endpoint/s on initialization.
+     * @param {Cluster} values.network - The network to connect to.
+     * @param {string=} values.endpoint - If using `mode` "single", will default to this endpoint. If not provided, will default to the default public RPC endpoint for the network.
+     * @param {string[]=} values.endpoints - If any other mode, will default to this array of endpoints. If not provided, will default to `values.endpoint` or the default public RPC endpoint for the network.
+     * @param {ConnectionConfig=} values.config - Additional configuration options for the web3.js connection.
+     * @param {Commitment=} values.commitment - The commitment level. Defaults to "processed".
+     * @param {Mode=} values.mode - The mode to use for selecting an endpoint. Possible values are "single", "first", "last", "round-robin", "fastest", "weighted", "random" and "highest-slot". Defaults to "single".
+     * @returns {ConnectionManager} A singleton instance of the ConnectionManager class.
+     */
+    public static async getInstance(values: IConnectionManagerConstructor): Promise<ConnectionManager> {
         if (!ConnectionManager._instance) {
             const endpoints = values.endpoints
                 ? values.endpoints
                 : values.endpoint !== undefined
-                    ? [values.endpoint]
-                    : [this.getDefaultEndpoint(values.network)];
-            const fatestEndpoint = await ConnectionManager.getFastestEndpoint(endpoints);
-            ConnectionManager._instance = new ConnectionManager(values, fatestEndpoint.endpoint);
+                ? [values.endpoint]
+                : [this.getDefaultEndpoint(values.network)];
+            const endpointsSummary = await ConnectionManager.getEndpointsSummary(
+                endpoints,
+                values.commitment || 'processed'
+            );
+            const fastestEndpoint = endpointsSummary.sort((a, b) => b.speedMs - a.speedMs)[0].endpoint;
+            const highestSlotEndpoint = endpointsSummary.sort((a, b) => b.currentSlot - a.currentSlot)[0].endpoint;
+            ConnectionManager._instance = new ConnectionManager(values, fastestEndpoint, highestSlotEndpoint);
         }
 
         return ConnectionManager._instance;
     }
 
-    public conn({
+    /**
+     * Builds and returns a singleton instance of the ConnectionManager class. This method should only be used after initializing the ConnectionManager with `getInstance()`.
+     * @returns {Connection} The web3.js connection.
+     */
+    public static getInstanceSync(): ConnectionManager {
+        if (!ConnectionManager._instance) {
+            throw new Error('ConnectionManager has not been initialized');
+        }
+
+        return ConnectionManager._instance;
+    }
+
+    /**
+     * Returns a web3.js connection.
+     *
+     * @remarks
+     * If you are using `mode` "fastest" or "highest-slot", this method will return the RPC determined during initialization of ConnectionManager. Use the async `conn()` method instead to update the determined RPC.
+     *
+     * @param changeConn - If true, will return a new connection based on the configured `mode`. If false, will return the current connection.
+     * @param airdrop - If true, will default to the public RPC endpoint hosted by Solana (it is the only RPC endpoint that supports airdrops).
+     * @returns A web3.js connection.
+     */
+    public connSync({ changeConn = true, airdrop = false }: { changeConn?: boolean; airdrop?: boolean }): Connection {
+        if (!changeConn) {
+            return this._connection;
+        }
+
+        let conn: Connection = this._connection;
+
+        if (airdrop) {
+            conn = new Connection(
+                ConnectionManager.getDefaultEndpoint(this._config.network),
+                this._config.config || this._config.commitment
+            );
+        } else {
+            switch (this._config.mode) {
+                case 'single':
+                case 'first':
+                case 'last':
+                    {
+                        // handled in constructor, no need to reinitialize
+                        // use async method to get new connection for `fastest` or `hightest-slot` mode
+                        conn = this._connection;
+                    }
+                    break;
+                case 'highest-slot':
+                    {
+                        if (this._connection.rpcEndpoint !== this._highestSlotEndpoint) {
+                            this._logger.debug(`Changing endpoint to ${this._highestSlotEndpoint}`);
+                            conn = new Connection(
+                                this._highestSlotEndpoint,
+                                this._config.config || this._config.commitment
+                            );
+                        }
+                    }
+                    break;
+                case 'fastest': {
+                    {
+                        if (this._connection.rpcEndpoint !== this._fastestEndpoint) {
+                            this._logger.debug(`Changing connection to ${this._fastestEndpoint}`);
+                            conn = new Connection(
+                                this._fastestEndpoint,
+                                this._config.config || this._config.commitment
+                            );
+                        }
+                    }
+                    break;
+                }
+                case 'round-robin':
+                    {
+                        const currentIndex = this._config.endpoints?.indexOf(this._connection.rpcEndpoint);
+                        if (currentIndex === -1) {
+                            if (
+                                this._connection.rpcEndpoint ===
+                                ConnectionManager.getDefaultEndpoint(this._config.network)
+                            ) {
+                                conn = new Connection(
+                                    this._config.endpoints![0],
+                                    this._config.config || this._config.commitment
+                                );
+                            } else {
+                                throw new Error('Current endpoint not found in endpoints array');
+                            }
+                        } else if (currentIndex !== undefined) {
+                            // we can assume endpoints is non-null at this point
+                            // constructor will throw if endpoints is null + mode is round-robin
+                            const nextIndex = currentIndex + 1 >= this._config.endpoints!.length ? 0 : currentIndex + 1;
+                            const rpcUrl = this._config.endpoints![nextIndex];
+                            conn = new Connection(rpcUrl, this._config.config || this._config.commitment);
+                        } else {
+                            throw new Error('Current index is undefined');
+                        }
+                    }
+                    break;
+                case 'random':
+                    {
+                        const rpcUrl =
+                            this._config.endpoints![Math.floor(Math.random() * this._config.endpoints!.length)];
+                        conn = new Connection(rpcUrl, this._config.config || this._config.commitment);
+                    }
+                    break;
+                default:
+                    this._logger.error('Invalid mode');
+                    conn = this._connection;
+                    break;
+            }
+        }
+
+        this._logger.debug(`Using endpoint: ${conn.rpcEndpoint}`);
+        this._connection = conn;
+        return conn;
+    }
+
+    /**
+     * Returns a web3.js connection.
+     *
+     * @param changeConn - If true, will return a new connection based on the configured `mode`. If false, will return the current connection.
+     * @param airdrop - If true, will default to the public RPC endpoint hosted by Solana (it is the only RPC endpoint that supports airdrops).
+     * @returns A web3.js connection.
+     */
+    public async conn({
         changeConn = true,
         airdrop = false
     }: {
         changeConn?: boolean;
         airdrop?: boolean;
-    }): Connection {
+    }): Promise<Connection> {
         if (!changeConn) {
             return this._connection;
         }
@@ -179,21 +350,40 @@ export class ConnectionManager {
                     // handled in constructor, no need to reinitialize
                     conn = this._connection;
                     break;
+                case 'highest-slot':
+                    {
+                        const endpointsSummary = await this.getEndpointsSummary();
+                        const highestSlotEndpoint = endpointsSummary.sort((a, b) => b.currentSlot - a.currentSlot)[0]
+                            .endpoint;
+                        if (this._connection.rpcEndpoint !== highestSlotEndpoint) {
+                            this._logger.debug(`Changing endpoint to ${highestSlotEndpoint}`);
+                            conn = new Connection(highestSlotEndpoint, this._config.config || this._config.commitment);
+                        }
+                    }
+                    break;
                 case 'fastest': {
-                    if (this._connection.rpcEndpoint !== this._fastestEndpoint) {
-                        this._logger.info(`Changing connection to ${this._fastestEndpoint}`);
-                        conn = new Connection(this._fastestEndpoint, this._config.config || this._config.commitment);
+                    {
+                        const endpointsSummary = await this.getEndpointsSummary();
+                        const fastestEndpoint = endpointsSummary.sort((a, b) => b.speedMs - a.speedMs)[0].endpoint;
+                        if (this._connection.rpcEndpoint !== fastestEndpoint) {
+                            this._logger.debug(`Changing connection to ${fastestEndpoint}`);
+                            conn = new Connection(fastestEndpoint, this._config.config || this._config.commitment);
+                        }
                     }
                     break;
                 }
-                case 'weighted':
-                    throw new Error('Not implemented yet');
                 case 'round-robin':
                     {
                         const currentIndex = this._config.endpoints?.indexOf(this._connection.rpcEndpoint);
                         if (currentIndex === -1) {
-                            if (this._connection.rpcEndpoint === ConnectionManager.getDefaultEndpoint(this._config.network)) {
-                                conn = new Connection(this._config.endpoints![0], this._config.config || this._config.commitment);
+                            if (
+                                this._connection.rpcEndpoint ===
+                                ConnectionManager.getDefaultEndpoint(this._config.network)
+                            ) {
+                                conn = new Connection(
+                                    this._config.endpoints![0],
+                                    this._config.config || this._config.commitment
+                                );
                             } else {
                                 throw new Error('Current endpoint not found in endpoints array');
                             }
@@ -224,22 +414,33 @@ export class ConnectionManager {
         return conn;
     }
 
+    /**
+     * Returns a summary of speed and slot height for each endpoint.
+     * @returns {Promise<IRPCSummary[]>} An array of IRPCSummary objects.
+     */
     public async getEndpointsSummary(): Promise<IRPCSummary[]> {
         const endpoints = this._config.endpoints || [this._connection.rpcEndpoint];
         return await ConnectionManager.getEndpointsSummary(endpoints);
     }
 
-    public static async getEndpointsSummary(endpoints: string[]): Promise<IRPCSummary[]> {
+    /**
+     * A static version of `getEndpointsSummary()`. Returns a summary of speed and slot height for each endpoint.
+     * @param endpoints - An array of endpoints to test.
+     * @param commitment - The commitment level.
+     * @returns {Promise<IRPCSummary[]>} An array of IRPCSummary objects.
+     */
+    public static async getEndpointsSummary(endpoints: string[], commitment?: Commitment): Promise<IRPCSummary[]> {
         const results = await Promise.all(
             endpoints.map(async (endpoint) => {
                 const conn = new Connection(endpoint);
                 const start = Date.now();
-                await conn.getEpochInfo();
+                const currentSlot = await conn.getSlot(commitment);
                 const end = Date.now();
                 const speedMs = end - start;
                 return {
                     endpoint,
-                    speedMs
+                    speedMs,
+                    currentSlot
                 };
             })
         );
@@ -247,12 +448,23 @@ export class ConnectionManager {
         return results;
     }
 
-    public static async getFastestEndpoint(endpoints: string[]): Promise<IRPCSummary> {
-        let summary = await ConnectionManager.getEndpointsSummary(endpoints);
+    /**
+     * Returns the fastest endpoint url, speed and slot height.
+     * @param endpoints - An array of endpoints to test.
+     * @param commitment - The commitment level.
+     * @returns {Promise<IRPCSummary>} An IRPCSummary object.
+     */
+    public static async getFastestEndpoint(endpoints: string[], commitment?: Commitment): Promise<IRPCSummary> {
+        let summary = await ConnectionManager.getEndpointsSummary(endpoints, commitment);
         summary = summary.sort((a, b) => a.speedMs - b.speedMs);
         return summary[0];
     }
 
+    /**
+     * Returns the default endpoint for the given network.
+     * @param network - The network to get the default endpoint for.
+     * @returns {string} The default endpoint.
+     */
     public static getDefaultEndpoint(network: string | undefined) {
         switch (network) {
             case 'mainnet-beta':
@@ -281,6 +493,7 @@ export interface IConnectionManagerConstructor {
 export interface IRPCSummary {
     endpoint: string;
     speedMs: number;
+    currentSlot: number;
 }
 
-export type Mode = 'single' | 'first' | 'last' | 'round-robin' | 'random' | 'fastest' | 'weighted';
+export type Mode = 'single' | 'first' | 'last' | 'round-robin' | 'random' | 'fastest' | 'highest-slot';
