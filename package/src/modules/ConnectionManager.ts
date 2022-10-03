@@ -430,6 +430,12 @@ export class ConnectionManager {
      * @returns {Promise<IRPCSummary[]>} An array of IRPCSummary objects.
      */
     public static async getEndpointsSummary(endpoints: string[], commitment?: Commitment): Promise<IRPCSummary[]> {
+        // handle if endpoints is empty
+        if (endpoints.length === 0) {
+            throw new Error('Endpoints array is empty');
+        }
+
+        // FIX: no handling if endpoint is unavailable
         const results = await Promise.all(
             endpoints.map(async (endpoint) => {
                 const conn = new Connection(endpoint);
