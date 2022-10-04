@@ -196,8 +196,17 @@ export class ConnectionManager {
                 endpoints,
                 values.commitment || 'processed'
             );
-            const fastestEndpoint = endpointsSummary.sort((a, b) => b.speedMs - a.speedMs)[0].endpoint;
-            const highestSlotEndpoint = endpointsSummary.sort((a, b) => b.currentSlot - a.currentSlot)[0].endpoint;
+
+            // check if any endpoints are available
+            const reachableEndpoints = endpointsSummary.filter((endpoint) => endpoint.isReachable === true);
+
+            // if no endpoints are available, throw error
+            if (reachableEndpoints.every((endpoint) => endpoint.isReachable === false)) {
+                throw new Error('No reachable endpoints');
+            }
+
+            const fastestEndpoint = reachableEndpoints.sort((a, b) => b.speedMs! - a.speedMs!)[0].endpoint;
+            const highestSlotEndpoint = reachableEndpoints.sort((a, b) => b.currentSlot! - a.currentSlot!)[0].endpoint;
             ConnectionManager._instance = new ConnectionManager(values, fastestEndpoint, highestSlotEndpoint);
         }
 
@@ -353,8 +362,18 @@ export class ConnectionManager {
                 case 'highest-slot':
                     {
                         const endpointsSummary = await this.getEndpointsSummary();
-                        const highestSlotEndpoint = endpointsSummary.sort((a, b) => b.currentSlot - a.currentSlot)[0]
-                            .endpoint;
+
+                        // throw error if all endpoints are unreachable
+                        if (endpointsSummary.every((endpoint) => endpoint.isReachable === false)) {
+                            throw new Error('All endpoints unreachable');
+                        }
+
+                        // filter out unreachable endpoints
+                        let reachableEndpoints = endpointsSummary
+                            .filter((endpoint) => endpoint.isReachable)
+                            .sort((a, b) => a.currentSlot! - b.currentSlot!);
+
+                        const highestSlotEndpoint = reachableEndpoints[0].endpoint;
                         if (this._connection.rpcEndpoint !== highestSlotEndpoint) {
                             this._logger.debug(`Changing endpoint to ${highestSlotEndpoint}`);
                             conn = new Connection(highestSlotEndpoint, this._config.config || this._config.commitment);
@@ -364,7 +383,18 @@ export class ConnectionManager {
                 case 'fastest': {
                     {
                         const endpointsSummary = await this.getEndpointsSummary();
-                        const fastestEndpoint = endpointsSummary.sort((a, b) => b.speedMs - a.speedMs)[0].endpoint;
+
+                        // throw error if all endpoints are unreachable
+                        if (endpointsSummary.every((endpoint) => endpoint.isReachable === false)) {
+                            throw new Error('All endpoints unreachable');
+                        }
+
+                        // filter out unreachable endpoints
+                        let reachableEndpoints = endpointsSummary
+                            .filter((endpoint) => endpoint.isReachable)
+                            .sort((a, b) => a.speedMs! - b.speedMs!);
+
+                        const fastestEndpoint = reachableEndpoints[0].endpoint;
                         if (this._connection.rpcEndpoint !== fastestEndpoint) {
                             this._logger.debug(`Changing connection to ${fastestEndpoint}`);
                             conn = new Connection(fastestEndpoint, this._config.config || this._config.commitment);
@@ -435,19 +465,29 @@ export class ConnectionManager {
             throw new Error('Endpoints array is empty');
         }
 
-        // FIX: no handling if endpoint is unavailable
+        // no handling if endpoint is unavailable
         const results = await Promise.all(
             endpoints.map(async (endpoint) => {
-                const conn = new Connection(endpoint);
-                const start = Date.now();
-                const currentSlot = await conn.getSlot(commitment);
-                const end = Date.now();
-                const speedMs = end - start;
-                return {
-                    endpoint,
-                    speedMs,
-                    currentSlot
-                };
+                try {
+                    const conn = new Connection(endpoint);
+                    const start = Date.now();
+                    const currentSlot = await conn.getSlot(commitment);
+                    const end = Date.now();
+                    const speedMs = end - start;
+                    return {
+                        endpoint,
+                        speedMs,
+                        currentSlot,
+                        isReachable: true
+                    };
+                } catch {
+                    return {
+                        endpoint,
+                        speedMs: undefined,
+                        currentSlot: undefined,
+                        isReachable: false
+                    };
+                }
             })
         );
 
@@ -462,8 +502,18 @@ export class ConnectionManager {
      */
     public static async getFastestEndpoint(endpoints: string[], commitment?: Commitment): Promise<IRPCSummary> {
         let summary = await ConnectionManager.getEndpointsSummary(endpoints, commitment);
-        summary = summary.sort((a, b) => a.speedMs - b.speedMs);
-        return summary[0];
+
+        // if all endpoints are unreachable, throw error
+        if (summary.every((endpoint) => endpoint.isReachable === false)) {
+            throw new Error('No reachable endpoints');
+        }
+
+        // filter out unreachable endpoints
+        let reachableEndpoints = summary
+            .filter((endpoint) => endpoint.isReachable)
+            .sort((a, b) => a.speedMs! - b.speedMs!);
+
+        return reachableEndpoints[0];
     }
 
     /**
@@ -498,8 +548,9 @@ export interface IConnectionManagerConstructor {
 
 export interface IRPCSummary {
     endpoint: string;
-    speedMs: number;
-    currentSlot: number;
+    isReachable: boolean;
+    speedMs?: number;
+    currentSlot?: number;
 }
 
 export type Mode = 'single' | 'first' | 'last' | 'round-robin' | 'random' | 'fastest' | 'highest-slot';
