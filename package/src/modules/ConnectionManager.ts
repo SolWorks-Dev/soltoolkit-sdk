@@ -197,14 +197,13 @@ export class ConnectionManager {
                 values.commitment || 'processed'
             );
 
-            // check if any endpoints are available
-            const reachableEndpoints = endpointsSummary.filter((endpoint) => endpoint.isReachable === true);
-
             // if no endpoints are available, throw error
-            if (reachableEndpoints.every((endpoint) => endpoint.isReachable === false)) {
+            if (endpointsSummary.every((endpoint) => endpoint.isReachable === false)) {
                 throw new Error('No reachable endpoints');
             }
 
+            // check if any endpoints are available
+            const reachableEndpoints = endpointsSummary.filter((endpoint) => endpoint.isReachable === true);
             const fastestEndpoint = reachableEndpoints.sort((a, b) => b.speedMs! - a.speedMs!)[0].endpoint;
             const highestSlotEndpoint = reachableEndpoints.sort((a, b) => b.currentSlot! - a.currentSlot!)[0].endpoint;
             ConnectionManager._instance = new ConnectionManager(values, fastestEndpoint, highestSlotEndpoint);
