@@ -369,7 +369,7 @@ export class ConnectionManager {
 
                         // filter out unreachable endpoints
                         let reachableEndpoints = endpointsSummary
-                            .filter((endpoint) => endpoint.isReachable)
+                            .filter((endpoint) => endpoint.isReachable === true)
                             .sort((a, b) => a.currentSlot! - b.currentSlot!);
 
                         const highestSlotEndpoint = reachableEndpoints[0].endpoint;
@@ -390,7 +390,7 @@ export class ConnectionManager {
 
                         // filter out unreachable endpoints
                         let reachableEndpoints = endpointsSummary
-                            .filter((endpoint) => endpoint.isReachable)
+                            .filter((endpoint) => endpoint.isReachable === true)
                             .sort((a, b) => a.speedMs! - b.speedMs!);
 
                         const fastestEndpoint = reachableEndpoints[0].endpoint;
@@ -509,7 +509,7 @@ export class ConnectionManager {
 
         // filter out unreachable endpoints
         let reachableEndpoints = summary
-            .filter((endpoint) => endpoint.isReachable)
+            .filter((endpoint) => endpoint.isReachable === true)
             .sort((a, b) => a.speedMs! - b.speedMs!);
 
         return reachableEndpoints[0];
