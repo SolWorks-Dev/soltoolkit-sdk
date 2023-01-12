@@ -134,6 +134,7 @@ const sender = Keypair.fromSecretKey(
     amount: number;
     recipient: string;
   }[] = [];
+
   const rentCost = (NO_OF_RECEIVERS+1) * 5_000;
   const transferAmount = Math.floor(
     (senderBal - rentCost) / NO_OF_RECEIVERS
@@ -151,8 +152,6 @@ const sender = Keypair.fromSecretKey(
     const transactions = await Disperse.create({
       tokenType: "SOL",
       sender: sender.publicKey,
-      // recipients: receivers.map((r) => r.publicKey),
-      // fixedAmount: 10,
       transfers,
     }).generateTransactions();
 
