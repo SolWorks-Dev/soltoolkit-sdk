@@ -7,14 +7,12 @@ import { Logger } from './Logger';
 export class TransactionWrapper {
     private _transaction: Transaction;
     private _connection: Connection;
-    private _signer?: PublicKey;
     private _logger: ILogger = new Logger('@soltoolkit/TransactionWrapper');
     private _feePayer?: PublicKey;
 
-    private constructor(connection: Connection, signer?: PublicKey, transaction?: Transaction, feePayer?: PublicKey) {
+    private constructor(connection: Connection, transaction?: Transaction, feePayer?: PublicKey) {
         this._transaction = transaction ? transaction : new Transaction();
         this._connection = connection;
-        this._signer = signer;
         this._feePayer = feePayer;
     }
 
@@ -23,7 +21,6 @@ export class TransactionWrapper {
         rpcEndpoint,
         connection,
         connectionManager,
-        signer,
         config,
         changeConn = false
     }: {
@@ -47,7 +44,7 @@ export class TransactionWrapper {
             throw new Error('No connection or rpc endpoint provided');
         }
 
-        return new TransactionWrapper(conn, signer, transaction);
+        return new TransactionWrapper(conn, transaction);
     }
 
     public async sendAndConfirm({
@@ -94,29 +91,29 @@ export class TransactionWrapper {
     public async addBlockhashAndFeePayer(feePayer?: PublicKey) {
         const latestBlockhash = await this._connection.getLatestBlockhash();
         this._transaction.recentBlockhash = latestBlockhash.blockhash;
-        this._transaction.feePayer = feePayer || this._feePayer || this._signer;
+        this._transaction.feePayer = feePayer || this._feePayer;
 
         if (this._transaction.feePayer === undefined) {
             throw new Error('Fee payer must be defined');
         }
 
-        // this._logger.debug('blockhash:', this._transaction.recentBlockhash);
-        // this._logger.debug('fee payer:', this._transaction.feePayer.toBase58());
+        this._logger.debug('blockhash:', this._transaction.recentBlockhash);
+        this._logger.debug('fee payer:', this._transaction.feePayer.toBase58());
 
         return this;
     }
 
     public async sign({
         wallet,
-        signer,
+        signers,
         tx
     }: {
         wallet?: IWallet;
-        signer?: Signer;
+        signers?: Signer[];
         tx?: Transaction;
     }): Promise<Transaction> {
-        if (!wallet && !signer) {
-            throw new Error('No wallet or signer provided');
+        if (!wallet && !signers) {
+            throw new Error('No wallet or signers provided');
         }
 
         if (tx === undefined) {
@@ -126,8 +123,10 @@ export class TransactionWrapper {
         if (wallet) {
             var signedTx = await wallet.signTransaction(tx);
             return signedTx!;
-        } else if (signer) {
-            tx.sign(signer);
+        } else if (signers) {
+            for (const signer of signers) {
+                tx.sign(signer);
+            }
             return tx;
         } else {
             throw new Error('Wallet or Signer must be provided');
