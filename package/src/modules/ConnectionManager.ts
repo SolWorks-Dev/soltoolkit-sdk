@@ -35,6 +35,7 @@ export class ConnectionManager {
     public _highestSlotEndpoint: string;
     private _config: IConnectionManagerConstructor;
     private _logger: ILogger = new Logger('@soltoolkit/ConnectionManager');
+    private _rpcSummary: IRPCSummary[] = [];
 
     private constructor(
         {
@@ -43,10 +44,9 @@ export class ConnectionManager {
             config,
             commitment = 'processed',
             endpoints,
-            mode = 'single'
+            mode = 'single',
+            rpcSummary: endpointsSortedBySpeed
         }: IConnectionManagerConstructor,
-        fastestEndpoint: string,
-        highestSlotEndpoint: string
     ) {
         let rpcUrl: string | undefined;
 
@@ -59,12 +59,16 @@ export class ConnectionManager {
                     commitment,
                     endpoints,
                     mode,
-                    fastestEndpoint
+                    endpointsSortedBySpeed
                 },
                 null,
                 2
             )}`
         );
+
+        const reachableEndpoints = endpointsSortedBySpeed.filter((endpoint) => endpoint.isReachable === true);
+        const fastestEndpoint = reachableEndpoints.sort((a, b) => b.speedMs! - a.speedMs!)[0].endpoint;
+        const highestSlotEndpoint = reachableEndpoints.sort((a, b) => b.currentSlot! - a.currentSlot!)[0].endpoint;
 
         // set rpc url based on mode and network
         switch (mode) {
@@ -169,10 +173,12 @@ export class ConnectionManager {
             config,
             commitment,
             endpoints,
-            mode
+            mode,
+            rpcSummary: endpointsSortedBySpeed
         };
         this._fastestEndpoint = fastestEndpoint || rpcUrl;
         this._highestSlotEndpoint = highestSlotEndpoint || rpcUrl;
+        this._rpcSummary = endpointsSortedBySpeed;
     }
 
     /**
@@ -203,10 +209,13 @@ export class ConnectionManager {
             }
 
             // check if any endpoints are available
-            const reachableEndpoints = endpointsSummary.filter((endpoint) => endpoint.isReachable === true);
-            const fastestEndpoint = reachableEndpoints.sort((a, b) => b.speedMs! - a.speedMs!)[0].endpoint;
-            const highestSlotEndpoint = reachableEndpoints.sort((a, b) => b.currentSlot! - a.currentSlot!)[0].endpoint;
-            ConnectionManager._instance = new ConnectionManager(values, fastestEndpoint, highestSlotEndpoint);
+            const endpointsSortedBySpeed = endpointsSummary
+                .filter((endpoint) => endpoint.isReachable === true)
+                .sort((a, b) => a.speedMs! - b.speedMs!);
+            ConnectionManager._instance = new ConnectionManager({
+                ...values,
+                rpcSummary: endpointsSortedBySpeed
+            });
         }
 
         return ConnectionManager._instance;
@@ -449,7 +458,13 @@ export class ConnectionManager {
      */
     public async getEndpointsSummary(): Promise<IRPCSummary[]> {
         const endpoints = this._config.endpoints || [this._connection.rpcEndpoint];
-        return await ConnectionManager.getEndpointsSummary(endpoints);
+        const summary = await ConnectionManager.getEndpointsSummary(endpoints);
+        this._rpcSummary = summary;
+        return summary;
+    }
+
+    public getRpcSummary(): IRPCSummary[] {
+        return this._rpcSummary;
     }
 
     /**
@@ -543,6 +558,7 @@ export interface IConnectionManagerConstructor {
     config?: ConnectionConfig;
     commitment?: Commitment;
     mode?: Mode;
+    rpcSummary: IRPCSummary[];
 }
 
 export interface IRPCSummary {
