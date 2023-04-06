@@ -1,6 +1,6 @@
 {
   "name": "@solworks/soltoolkit-sdk",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "SolToolkit SDK, by SolWorks. A set of tools by developers for developers.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -9,7 +9,6 @@
     "/build"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf ./build",
     "build": "npm run clean && npx tsc",
     "build::publish::patch": "npm run build && npm version patch && npm publish --access=public",
