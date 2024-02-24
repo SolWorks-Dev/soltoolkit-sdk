@@ -109,28 +109,30 @@ export class TransactionWrapper {
     public async sign({
         wallet,
         signers,
-        tx
+        txs
     }: {
         wallet?: IWallet;
         signers?: Signer[];
-        tx?: Transaction;
-    }): Promise<Transaction> {
+        txs?: Transaction[];
+    }): Promise<Transaction[]> {
         if (!wallet && !signers) {
             throw new Error('No wallet or signers provided');
         }
 
-        if (tx === undefined) {
-            tx = this._transaction;
+        if (txs === undefined) {
+            txs = this._transactions;
         }
 
         if (wallet) {
-            var signedTx = await wallet.signTransaction(tx);
+            var signedTx = await wallet.signAllTransactions(txs);
             return signedTx!;
         } else if (signers) {
             for (const signer of signers) {
-                tx.sign(signer);
+                for (const transaction of txs) {
+                    transaction.sign(signer);
+                }
             }
-            return tx;
+            return txs;
         } else {
             throw new Error('Wallet or Signer must be provided');
         }
