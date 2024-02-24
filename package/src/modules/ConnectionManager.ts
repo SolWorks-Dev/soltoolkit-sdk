@@ -191,7 +191,7 @@ export class ConnectionManager {
      * @param {Mode=} values.mode - The mode to use for selecting an endpoint. Possible values are "single", "first", "last", "round-robin", "fastest", "weighted", "random" and "highest-slot". Defaults to "single".
      * @returns {ConnectionManager} A singleton instance of the ConnectionManager class.
      */
-    public static async getInstance(values: IConnectionManagerConstructor): Promise<ConnectionManager> {
+    public static async getInstance(values: Omit<IConnectionManagerConstructor, 'rpcSummary'>): Promise<ConnectionManager> {
         if (!ConnectionManager._instance) {
             const endpoints = values.endpoints
                 ? values.endpoints
