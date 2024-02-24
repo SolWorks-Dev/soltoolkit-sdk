@@ -4,6 +4,7 @@ import { ConnectionManager, IConnectionManagerConstructor, IRPCSummary, Mode } f
 import { Disperse, TokenType, IDisperseConstructor } from './modules/Disperse';
 import { ITransfer } from './interfaces/ITransfer';
 import { Logger } from './modules/Logger';
+import { TransactionHelper } from './modules/TransactionHelper';
 export {
     TransactionBuilder,
     TransactionWrapper,
@@ -15,5 +16,6 @@ export {
     IRPCSummary,
     Mode,
     ITransfer,
-    Logger
+    Logger,
+    TransactionHelper
 };
