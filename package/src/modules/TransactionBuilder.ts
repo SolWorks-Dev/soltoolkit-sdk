@@ -16,7 +16,7 @@ import { ILogger } from '../interfaces/ILogger';
 import { ConnectionManager } from './ConnectionManager';
 import { Logger } from './Logger';
 
-const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+export const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
 export class TransactionBuilder {
     private _transaction: Transaction;
