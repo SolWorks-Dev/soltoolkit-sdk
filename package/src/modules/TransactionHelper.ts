@@ -193,4 +193,29 @@ export class TransactionHelper {
         });
         return ix;
     }
+
+    public static async doesTokenAccountExist({
+        connectionOrConnectionManager,
+        mint,
+        owner
+    }: {
+        connectionOrConnectionManager: Connection | ConnectionManager;
+        mint: PublicKey;
+        owner: PublicKey;
+    }): Promise<boolean> {
+        var connection: Connection;
+        if (connectionOrConnectionManager instanceof Connection) {
+            connection = connectionOrConnectionManager;
+        } else if (connectionOrConnectionManager instanceof ConnectionManager) {
+            connection = connectionOrConnectionManager._connection;
+        } else {
+            throw new Error('Invalid connectionOrConnectionManager');
+        }
+
+        const associatedAddr = getAssociatedTokenAddressSync(mint, owner);
+        const accInfo = await connection.getAccountInfo(associatedAddr);
+        return accInfo !== null;
+    }
+
+    public static getAssociatedTokenAddressSync = getAssociatedTokenAddressSync;
 }
