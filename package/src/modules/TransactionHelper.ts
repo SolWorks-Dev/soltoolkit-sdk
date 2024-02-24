@@ -96,9 +96,9 @@ export class TransactionHelper {
             throw new Error('Invalid connectionOrConnectionManager');
         }
 
-        const associatedAddr = getAssociatedTokenAddressSync(mint, owner);
-        const accInfo = await connection.getAccountInfo(associatedAddr);
-        if (accInfo !== null) {
+        const doesExist = await this.doesTokenAccountExist({ connectionOrConnectionManager: connection, mint, owner });
+        if (!doesExist) {
+            const associatedAddr = getAssociatedTokenAddressSync(mint, owner);
             const ix = createAssociatedTokenAccountInstruction(payer, associatedAddr, owner, mint);
             return ix;
         } else {
