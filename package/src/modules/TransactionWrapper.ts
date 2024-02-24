@@ -5,19 +5,20 @@ import { ConnectionManager } from './ConnectionManager';
 import { Logger } from './Logger';
 
 export class TransactionWrapper {
-    private _transaction: Transaction;
+    private _transactions: Transaction[];
     private _connection: Connection;
     private _logger: ILogger = new Logger('@soltoolkit/TransactionWrapper');
     private _feePayer?: PublicKey;
 
-    private constructor(connection: Connection, transaction?: Transaction, feePayer?: PublicKey) {
-        this._transaction = transaction ? transaction : new Transaction();
+    private constructor(connection: Connection, transaction?: Transaction | Transaction[] , feePayer?: PublicKey) {
+        this._transactions = transaction ? (Array.isArray(transaction) ? transaction : [transaction]) : [];
         this._connection = connection;
         this._feePayer = feePayer;
     }
 
     public static create({
         transaction,
+        transactions,
         rpcEndpoint,
         connection,
         connectionManager,
@@ -25,6 +26,7 @@ export class TransactionWrapper {
         changeConn = false
     }: {
         transaction?: Transaction;
+        transactions?: Transaction[];
         rpcEndpoint?: string;
         connection?: Connection;
         connectionManager?: ConnectionManager;
@@ -44,7 +46,7 @@ export class TransactionWrapper {
             throw new Error('No connection or rpc endpoint provided');
         }
 
-        return new TransactionWrapper(conn, transaction);
+        return new TransactionWrapper(conn, transaction || transactions);
     }
 
     public async sendAndConfirm({
@@ -90,16 +92,17 @@ export class TransactionWrapper {
 
     public async addBlockhashAndFeePayer(feePayer?: PublicKey) {
         const latestBlockhash = await this._connection.getLatestBlockhash();
-        this._transaction.recentBlockhash = latestBlockhash.blockhash;
-        this._transaction.feePayer = feePayer || this._feePayer;
-
-        if (this._transaction.feePayer === undefined) {
-            throw new Error('Fee payer must be defined');
+        for (const transaction of this._transactions) {
+            transaction.recentBlockhash = latestBlockhash.blockhash;
+            transaction.feePayer = feePayer || this._feePayer;
+    
+            if (transaction.feePayer === undefined) {
+                throw new Error('Fee payer must be defined');
+            }
+    
+            this._logger.debug('blockhash:', transaction.recentBlockhash);
+            this._logger.debug('fee payer:', transaction.feePayer.toBase58());
         }
-
-        this._logger.debug('blockhash:', this._transaction.recentBlockhash);
-        this._logger.debug('fee payer:', this._transaction.feePayer.toBase58());
-
         return this;
     }
 

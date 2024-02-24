@@ -3,7 +3,7 @@
   <p>
     <a href="https://www.npmjs.com/package/@solworks/soltoolkit-sdk"><img alt="SDK npm package" src="https://img.shields.io/npm/v/@solworks/soltoolkit-sdk" /></a>
     <a href="https://docs.solworks.dev/"><img alt="Docs" src="https://img.shields.io/badge/docs-tutorials-blueviolet" /></a>
-    <a href="https://discord.com/invite/sujiko"><img alt="Discord Chat" src="https://img.shields.io/discord/991631315768193067?color=blueviolet" /></a>
+    <a href="https://discord.com/invite/Qbd7yNcEPS"><img alt="Discord Chat" src="https://img.shields.io/discord/991631315768193067?color=blueviolet" /></a>
   </p>
 </div>
 
