@@ -1,6 +1,6 @@
 {
   "name": "@solworks/soltoolkit-sdk",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "SolToolkit SDK, by SolWorks. A set of tools by developers for developers.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
