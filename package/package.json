@@ -1,6 +1,6 @@
 {
   "name": "@solworks/soltoolkit-sdk",
-  "version": "0.0.18",
+  "version": "0.0.20",
   "description": "SolToolkit SDK, by SolWorks. A set of tools by developers for developers.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "clean": "rm -rf ./build",
-    "build": "npm run clean && npx tsc",
+    "build": "npx tsc",
     "build::publish::patch": "npm run build && npm version patch && npm publish --access=public",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "publish": "npm publish --access=public"
