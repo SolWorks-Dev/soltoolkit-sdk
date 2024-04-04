@@ -194,6 +194,13 @@ export class TransactionHelper {
         return ix;
     }
 
+    /**
+     * Checks if a token account exists. Returns true if it does, false if it does not.
+     * @param connectionOrConnectionManager The connection or connection manager.
+     * @param mint The token mint as a public key.
+     * @param owner The owner as a public key.
+     * @returns A promise that resolves to a boolean.
+     */
     public static async doesTokenAccountExist({
         connectionOrConnectionManager,
         mint,
