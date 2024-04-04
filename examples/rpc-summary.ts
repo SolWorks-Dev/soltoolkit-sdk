@@ -1,27 +1,30 @@
 import { Commitment } from "@solana/web3.js";
 import { Logger, ConnectionManager } from "../package/build/index";
 
-
 (async () => {
-  const COMMITMENT: Commitment = "max";
   const logger = new Logger("example");
 
   // create connection manager
+  // only needs to be created once as it is a singleton
   const cm = await ConnectionManager.getInstance({
-    commitment: COMMITMENT,
-    endpoints: [
-      "https://api.devnet.solana.com",
-      "https://solana-devnet-rpc.allthatnode.com",
-      "https://mango.devnet.rpcpool.com",
-      "https://rpc.ankr.com/solana_devnet",
-    ],
-    mode: "highest-slot",
-    network: "devnet"
-  });
+    // commitment will be set to 'processed' if not provided
+    commitment: 'single',
 
-  // get summary of endpoint speeds
-  const summary = await cm.getEndpointsSummary();
-  logger.debug(JSON.stringify(summary, null, 2));
+    // provide an array of endpoints to connect to or use `endpoint` to connect to a single endpoint
+    endpoints: [
+      "https://api.mainnet-beta.solana.com",
+      "https://api.devnet.solana.com",
+    ],
+
+    // mode will be set to 'latest' if not provided
+    mode: 'latest-valid-block-height',
+
+    // network must be provided, airdrop only supported on devnet
+    network: 'mainnet-beta',
+
+    // verbose will be set to false if not provided
+    verbose: false
+  });
 
   // get fastest endpoint
   const fastest = cm._fastestEndpoint;
@@ -30,6 +33,10 @@ import { Logger, ConnectionManager } from "../package/build/index";
   // get highest slot endpoint
   const highestSlot = cm._highestSlotEndpoint;
   logger.debug(`Highest slot endpoint: ${highestSlot}`);
+
+  // get latest block height endpoint
+  const latestBlockHeight = cm._latestValidBlockHeightEndpoint;
+  logger.debug(`Latest block height endpoint: ${latestBlockHeight}`);
 
   // get current connection endpoint
   const current = cm.connSync({ changeConn: false }).rpcEndpoint;

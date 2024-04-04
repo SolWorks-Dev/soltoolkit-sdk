@@ -304,6 +304,68 @@ const addressPublicKey = new PublicKey(addressString);
 })();
 ```
 
+### Send a transaction using Jito
+```typescript
+import { Keypair, LAMPORTS_PER_SOL, Signer } from "@solana/web3.js";
+import {
+  ConnectionManager,
+  TransactionBuilder,
+  TransactionWrapper,
+  Logger,
+  sendTxUsingJito
+} from "@solworks/soltoolkit-sdk";
+
+(async () => {
+  // create connection manager
+  const cm = await ConnectionManager.getInstance({
+    commitment: 'processed',
+    endpoints: [
+      "https://api.mainnet-beta.solana.com",
+    ],
+    mode: "fastest",
+    network: "mainnet-beta",
+  });
+
+  // create builder and add token transfer ix
+  var builder = TransactionBuilder
+    .create()
+    .addMemoIx({
+      memo: "gm",
+      signer: sender.publicKey,
+    });
+
+  // build the transaction
+  // returns a transaction with no fee payer or blockhash
+  let tx = builder.build();
+
+  // feed transaction into TransactionWrapper
+  const wrapper = await TransactionWrapper.create({
+    connectionManager: cm,
+    transaction: tx,
+    signer: sender.publicKey,
+  }).addBlockhashAndFeePayer();
+
+  // sign the transaction
+  const signedTx = await wrapper.sign({
+    signer: sender as Signer,
+  });
+
+  // send and confirm the transaction
+  const transferSig = await wrapper.sendTxUsingJito({
+    serialisedTx: signedTx.serialize(),
+    region: 'mainnet',
+    sendOptions: {}
+  });
+
+  // OR use static method
+  const transferSig = await sendTxUsingJito({
+    serialisedTx: signedTx.serialize(),
+    region: 'mainnet',
+    sendOptions: {}
+  });
+})();
+```
+
 ### Dispersing SOL to 10,000 users in <120 seconds
 See [example](https://github.com/SolWorks-Dev/soltoolkit-sdk/blob/master/examples/bulk-sol-transfer.ts).
 
