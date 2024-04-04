@@ -1,4 +1,4 @@
-import { Transaction, Connection, PublicKey, ConnectionConfig, Commitment, Signer } from '@solana/web3.js';
+import { Transaction, Connection, PublicKey, ConnectionConfig, Commitment, Signer, SendOptions } from '@solana/web3.js';
 import { ILogger } from '../interfaces/ILogger';
 import { IWallet } from '../interfaces/IWallet';
 import { ConnectionManager } from './ConnectionManager';
@@ -10,7 +10,7 @@ export class TransactionWrapper {
     private _logger: ILogger = new Logger('@soltoolkit/TransactionWrapper');
     private _feePayer?: PublicKey;
 
-    private constructor(connection: Connection, transaction?: Transaction | Transaction[] , feePayer?: PublicKey) {
+    private constructor(connection: Connection, transaction?: Transaction | Transaction[], feePayer?: PublicKey) {
         this._transactions = transaction ? (Array.isArray(transaction) ? transaction : [transaction]) : [];
         this._connection = connection;
         this._feePayer = feePayer;
@@ -95,11 +95,11 @@ export class TransactionWrapper {
         for (const transaction of this._transactions) {
             transaction.recentBlockhash = latestBlockhash.blockhash;
             transaction.feePayer = feePayer || this._feePayer;
-    
+
             if (transaction.feePayer === undefined) {
                 throw new Error('Fee payer must be defined');
             }
-    
+
             this._logger.debug('blockhash:', transaction.recentBlockhash);
             this._logger.debug('fee payer:', transaction.feePayer.toBase58());
         }
@@ -141,6 +141,18 @@ export class TransactionWrapper {
     public async sendTx({ serialisedTx }: { serialisedTx: Uint8Array | Buffer | number[] }) {
         var sig = await this._connection.sendRawTransaction(serialisedTx);
         return sig;
+    }
+
+    public async sendTxUsingJito({
+        serialisedTx,
+        sendOptions,
+        region = 'mainnet'
+    }: {
+        serialisedTx: Uint8Array | Buffer | number[];
+        sendOptions: SendOptions;
+        region: JitoRegion;
+    }) {
+        return await sendTxWithJito({ serialisedTx, sendOptions, region });
     }
 
     public async confirmTx({ signature, commitment = 'max' }: { signature: string; commitment?: Commitment }) {
@@ -193,4 +205,41 @@ export class TransactionWrapper {
             commitment
         );
     }
+}
+
+export type JitoRegion = 'mainnet' | 'amsterdam' | 'frankfurt' | 'ny' | 'tokyo';
+export const JitoEndpoints = {
+    mainnet: 'https://mainnet.block-engine.jito.wtf',
+    amsterdam: 'https://amsterdam.mainnet.block-engine.jito.wtf',
+    frankfurt: 'https://frankfurt.mainnet.block-engine.jito.wtf',
+    ny: 'https://ny.mainnet.block-engine.jito.wtf',
+    tokyo: 'https://tokyo.mainnet.block-engine.jito.wtf'
+};
+export function getJitoEndpoint(region: JitoRegion) {
+    return JitoEndpoints[region];
+}
+/**
+ * Send a transaction using Jito. This only supports sending a single transaction on mainnet only.
+ * See https://jito-labs.gitbook.io/mev/searcher-resources/json-rpc-api-reference/transactions-endpoint/sendtransaction.
+ * @param args.serialisedTx - A single transaction to be sent, in serialised form
+ * @param args.sendOptions - Options for sending the transaction. Skip preflight is set to true by default
+ * @param args.region - The region of the Jito endpoint to use
+ * @returns - The signature of the transaction
+*/
+export async function sendTxWithJito({
+    serialisedTx,
+    sendOptions,
+    region = 'mainnet'
+}: {
+    serialisedTx: Uint8Array | Buffer | number[];
+    sendOptions: SendOptions;
+    region: JitoRegion;
+}) {
+    let rpcEndpoint = getJitoEndpoint(region);
+    let jitoConn = new Connection(rpcEndpoint);
+    let sig = await jitoConn.sendRawTransaction(serialisedTx, {
+        ...sendOptions,
+        skipPreflight: true
+    });
+    return sig;
 }
