@@ -1,5 +1,5 @@
 import { TransactionBuilder } from './modules/TransactionBuilder';
-import { TransactionWrapper } from './modules/TransactionWrapper';
+import { TransactionWrapper, getJitoEndpoint } from './modules/TransactionWrapper';
 import { ConnectionManager, IConnectionManagerConstructor, IRPCSummary, Mode } from './modules/ConnectionManager';
 import { Disperse, TokenType, IDisperseConstructor } from './modules/Disperse';
 import { ITransfer } from './interfaces/ITransfer';
@@ -19,5 +19,6 @@ export {
     ITransfer,
     Logger,
     TransactionHelper,
-    SNSDomainResolver
+    SNSDomainResolver,
+    getJitoEndpoint
 };
