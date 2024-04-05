@@ -144,15 +144,15 @@ export class TransactionWrapper {
     }
 
     public async sendTxUsingJito({
-        serialisedTx,
+        serializedTx,
         sendOptions,
         region = 'mainnet'
     }: {
-        serialisedTx: Uint8Array | Buffer | number[];
+        serializedTx: Uint8Array | Buffer | number[];
         sendOptions: SendOptions;
         region: JitoRegion;
     }) {
-        return await sendTxWithJito({ serialisedTx, sendOptions, region });
+        return await sendTxUsingJito({ serializedTx, sendOptions, region });
     }
 
     public async confirmTx({ signature, commitment = 'max' }: { signature: string; commitment?: Commitment }) {
@@ -226,18 +226,18 @@ export function getJitoEndpoint(region: JitoRegion) {
  * @param args.region - The region of the Jito endpoint to use
  * @returns - The signature of the transaction
 */
-export async function sendTxWithJito({
-    serialisedTx,
+export async function sendTxUsingJito({
+    serializedTx,
     sendOptions,
     region = 'mainnet'
 }: {
-    serialisedTx: Uint8Array | Buffer | number[];
+    serializedTx: Uint8Array | Buffer | number[];
     sendOptions: SendOptions;
     region: JitoRegion;
 }) {
     let rpcEndpoint = getJitoEndpoint(region);
     let jitoConn = new Connection(rpcEndpoint);
-    let sig = await jitoConn.sendRawTransaction(serialisedTx, {
+    let sig = await jitoConn.sendRawTransaction(serializedTx, {
         ...sendOptions,
         skipPreflight: true
     });
