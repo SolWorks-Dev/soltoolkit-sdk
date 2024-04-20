@@ -4,6 +4,7 @@ import {
   ConnectionManager,
   TransactionBuilder,
   TransactionWrapper,
+  getJitoEndpoint
 } from "../package/src/index";
 
 const COMMITMENT: Commitment = "confirmed";
@@ -84,8 +85,8 @@ const receiver = Keypair.generate();
   }).addBlockhashAndFeePayer();
 
   // sign the transaction
-  const signedTx = await wrapper.sign({
-    signer: sender as Signer,
+  const signedTxs = await wrapper.sign({
+    signers: [sender as Signer],
   });
 
   // send and confirm the transaction
