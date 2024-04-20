@@ -3,7 +3,12 @@ import { ILogger } from '../interfaces/ILogger';
 import { IWallet } from '../interfaces/IWallet';
 import { ConnectionManager } from './ConnectionManager';
 import { Logger } from './Logger';
+import bs58 from 'bs58';
+import fetch from 'node-fetch';
 
+/**
+ * TransactionWrapper is a utility class that simplifies the process of creating, signing, sending, and confirming transactions.
+ */
 export class TransactionWrapper {
     private _transactions: Transaction[];
     private _connection: Connection;
@@ -145,14 +150,12 @@ export class TransactionWrapper {
 
     public async sendTxUsingJito({
         serializedTx,
-        sendOptions,
         region = 'mainnet'
     }: {
         serializedTx: Uint8Array | Buffer | number[];
-        sendOptions: SendOptions;
         region: JitoRegion;
     }) {
-        return await sendTxUsingJito({ serializedTx, sendOptions, region });
+        return await sendTxUsingJito({ serializedTx, region });
     }
 
     public async confirmTx({ signature, commitment = 'max' }: { signature: string; commitment?: Commitment }) {
@@ -209,11 +212,11 @@ export class TransactionWrapper {
 
 export type JitoRegion = 'mainnet' | 'amsterdam' | 'frankfurt' | 'ny' | 'tokyo';
 export const JitoEndpoints = {
-    mainnet: 'https://mainnet.block-engine.jito.wtf',
-    amsterdam: 'https://amsterdam.mainnet.block-engine.jito.wtf',
-    frankfurt: 'https://frankfurt.mainnet.block-engine.jito.wtf',
-    ny: 'https://ny.mainnet.block-engine.jito.wtf',
-    tokyo: 'https://tokyo.mainnet.block-engine.jito.wtf'
+    mainnet: 'https://mainnet.block-engine.jito.wtf/api/v1/transactions',
+    amsterdam: 'https://amsterdam.mainnet.block-engine.jito.wtf/api/v1/transactions',
+    frankfurt: 'https://frankfurt.mainnet.block-engine.jito.wtf/api/v1/transactions',
+    ny: 'https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions',
+    tokyo: 'https://tokyo.mainnet.block-engine.jito.wtf/api/v1/transactions',
 };
 export function getJitoEndpoint(region: JitoRegion) {
     return JitoEndpoints[region];
@@ -222,24 +225,32 @@ export function getJitoEndpoint(region: JitoRegion) {
  * Send a transaction using Jito. This only supports sending a single transaction on mainnet only.
  * See https://jito-labs.gitbook.io/mev/searcher-resources/json-rpc-api-reference/transactions-endpoint/sendtransaction.
  * @param args.serialisedTx - A single transaction to be sent, in serialised form
- * @param args.sendOptions - Options for sending the transaction. Skip preflight is set to true by default
  * @param args.region - The region of the Jito endpoint to use
- * @returns - The signature of the transaction
+ * @returns The signature of the transaction
 */
 export async function sendTxUsingJito({
     serializedTx,
-    sendOptions,
     region = 'mainnet'
 }: {
     serializedTx: Uint8Array | Buffer | number[];
-    sendOptions: SendOptions;
     region: JitoRegion;
-}) {
+}): Promise<string> {
     let rpcEndpoint = getJitoEndpoint(region);
-    let jitoConn = new Connection(rpcEndpoint);
-    let sig = await jitoConn.sendRawTransaction(serializedTx, {
-        ...sendOptions,
-        skipPreflight: true
+    let encodedTx = bs58.encode(serializedTx);
+    let payload = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "sendTransaction",
+        params: [encodedTx]
+    };
+    let res = await fetch(`${rpcEndpoint}?bundleOnly=true`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' }
     });
-    return sig;
+    let json = await res.json();
+    if (json.error) {
+        throw new Error(json.error.message);
+    }
+    return json.result;
 }
