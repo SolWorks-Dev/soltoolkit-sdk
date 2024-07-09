@@ -212,12 +212,19 @@ export class TransactionWrapper {
 
 export type JitoRegion = 'mainnet' | 'amsterdam' | 'frankfurt' | 'ny' | 'tokyo';
 export const JitoEndpoints = {
-    mainnet: 'https://mainnet.block-engine.jito.wtf/api/v1/transactions',
-    amsterdam: 'https://amsterdam.mainnet.block-engine.jito.wtf/api/v1/transactions',
-    frankfurt: 'https://frankfurt.mainnet.block-engine.jito.wtf/api/v1/transactions',
-    ny: 'https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions',
-    tokyo: 'https://tokyo.mainnet.block-engine.jito.wtf/api/v1/transactions',
+    mainnet: 'https://mainnet.block-engine.jito.wtf/api/v1/',
+    amsterdam: 'https://amsterdam.mainnet.block-engine.jito.wtf/api/v1/',
+    frankfurt: 'https://frankfurt.mainnet.block-engine.jito.wtf/api/v1/',
+    ny: 'https://ny.mainnet.block-engine.jito.wtf/api/v1/',
+    tokyo: 'https://tokyo.mainnet.block-engine.jito.wtf/api/v1/'
 };
+interface BundleStatusResult {
+    bundle_id: string;
+    transactions: string[];
+    slot: number;
+    confirmation_status: string;
+    err?: any;
+}
 export function getJitoEndpoint(region: JitoRegion) {
     return JitoEndpoints[region];
 }
@@ -227,23 +234,23 @@ export function getJitoEndpoint(region: JitoRegion) {
  * @param args.serialisedTx - A single transaction to be sent, in serialised form
  * @param args.region - The region of the Jito endpoint to use
  * @returns The signature of the transaction
-*/
+ */
 export async function sendTxUsingJito({
     serializedTx,
     region = 'mainnet'
 }: {
     serializedTx: Uint8Array | Buffer | number[];
-    region: JitoRegion;
+    region?: JitoRegion;
 }): Promise<string> {
     let rpcEndpoint = getJitoEndpoint(region);
     let encodedTx = bs58.encode(serializedTx);
     let payload = {
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: 1,
-        method: "sendTransaction",
+        method: 'sendTransaction',
         params: [encodedTx]
     };
-    let res = await fetch(`${rpcEndpoint}?bundleOnly=true`, {
+    let res = await fetch(`${rpcEndpoint}/transactions?bundleOnly=true`, {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' }
@@ -253,4 +260,88 @@ export async function sendTxUsingJito({
         throw new Error(json.error.message);
     }
     return json.result;
+}
+/**
+ * Send a bundle of transactions using Jito.
+ * @param param0.signedTxs - An array of signed transactions
+ * @param param0.region - The region of the Jito endpoint to use. Defaults to mainnet.
+ * @returns A bundle ID, used to identify the bundle. This is the SHA-256 hash of the bundle's transaction signatures.
+ */
+export async function sendTransactionsAsBundleUsingJito({
+    signedTxs,
+    region = 'mainnet'
+}: {
+    signedTxs: Transaction[];
+    region?: JitoRegion;
+}): Promise<string> {
+    // Get the endpoint for the region
+    let rpcEndpoint = getJitoEndpoint(region);
+
+    // Encode the transactions
+    let encodedTxs = signedTxs.map((tx) =>
+        bs58.encode(
+            tx.serialize({
+                // Skip signature verification
+                verifySignatures: true
+            })
+        )
+    );
+
+    // Send bundle
+    let payload = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'sendBundle',
+        params: [encodedTxs]
+    };
+    let res = await fetch(`${rpcEndpoint}/bundles`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    // Parse response and return bundle ID
+    let json = await res.json();
+    if (json.error) {
+        throw new Error(json.error.message);
+    }
+    return json.result;
+}
+/**
+ * Get the status of a bundle using Jito.
+ * @param param0.bundleId - The bundle ID to get the status of.
+ * @returns The status of the bundle, or null if the bundle does not exist.
+ */
+export async function getJitoBundleStatus({
+    bundleId,
+    region = 'mainnet'
+}: {
+    bundleId: string;
+    region?: JitoRegion;
+}): Promise<BundleStatusResult[] | null> {
+    // Get the endpoint for the region
+    let rpcEndpoint = getJitoEndpoint(region);
+
+    // Send bundle status request
+    let payload = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getBundleStatuses',
+        params: [[bundleId]]
+    };
+    let res = await fetch(`${rpcEndpoint}/bundles`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    // Parse response
+    let json = await res.json();
+    if (json === null) {
+        return null;
+    }
+    if (json.error) {
+        throw new Error(json.error.message);
+    }
+    return json.result.value as BundleStatusResult[];
 }
