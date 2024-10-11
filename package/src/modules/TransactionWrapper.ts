@@ -35,7 +35,6 @@ export class TransactionWrapper {
         rpcEndpoint?: string;
         connection?: Connection;
         connectionManager?: ConnectionManager;
-        signer?: PublicKey;
         config?: ConnectionConfig;
         changeConn?: boolean;
     }): TransactionWrapper {
@@ -57,11 +56,13 @@ export class TransactionWrapper {
     public async sendAndConfirm({
         serialisedTx,
         maximumRetries = 5,
-        commitment = 'max'
+        commitment = 'max',
+        skipPreflight = false
     }: {
         serialisedTx: Uint8Array | Buffer | number[];
         maximumRetries?: number;
         commitment?: Commitment;
+        skipPreflight?: boolean;
     }): Promise<string> {
         var signature: string | undefined;
         var tries = 0;
@@ -71,7 +72,7 @@ export class TransactionWrapper {
             !isTransactionConfirmed // no confirmation of any signature
         ) {
             try {
-                signature = await this.sendTx({ serialisedTx });
+                signature = await this.sendTx({ serialisedTx, skipPreflight });
                 const result = await this.confirmTx({ signature, commitment });
                 if (result.value.err !== null) {
                     throw new Error(`RPC failure: ${JSON.stringify(result.value.err)}`);
@@ -143,8 +144,16 @@ export class TransactionWrapper {
         }
     }
 
-    public async sendTx({ serialisedTx }: { serialisedTx: Uint8Array | Buffer | number[] }) {
-        var sig = await this._connection.sendRawTransaction(serialisedTx);
+    public async sendTx({ 
+        serialisedTx, 
+        skipPreflight = false
+    }: { 
+        serialisedTx: Uint8Array | Buffer | number[];
+        skipPreflight?: boolean;
+    }) {
+        var sig = await this._connection.sendRawTransaction(serialisedTx, {
+            skipPreflight
+        });
         return sig;
     }
 
