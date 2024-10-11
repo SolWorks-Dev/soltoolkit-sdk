@@ -54,9 +54,11 @@ export class TransactionBuilder {
 
         const associatedAddr = getAssociatedTokenAddressSync(mint, owner);
         const accInfo = await connection.getAccountInfo(associatedAddr);
-        if (accInfo !== null) {
+        if (accInfo === null) {
             const ix = createAssociatedTokenAccountInstruction(payer, associatedAddr, owner, mint);
             this.addIx(ix);
+        } else {
+            this._logger.info(`Token account already exists: ${associatedAddr.toBase58()}`);
         }
         return this;
     }
@@ -89,6 +91,35 @@ export class TransactionBuilder {
         return this;
     }
 
+    public addSplTransferIxByOwners({
+        mint,
+        fromOwner,
+        toOwner,
+        rawAmount,
+        additionalSigners
+    }: {
+        mint: PublicKey;
+        fromOwner: PublicKey;
+        toOwner: PublicKey;
+        rawAmount: number;
+        additionalSigners?: Signer[];
+    }) {
+        // get associated token accounts
+        const fromTokenAccount = getAssociatedTokenAddressSync(mint, fromOwner);
+        const toTokenAccount = getAssociatedTokenAddressSync(mint, toOwner);
+        // create transfer instruction
+        const ix = createTransferInstruction(
+            fromTokenAccount, 
+            toTokenAccount, 
+            fromOwner, 
+            rawAmount, 
+            additionalSigners
+        );
+        // add instruction to the list
+        this.addIx(ix);
+        return this;
+    }
+
     public addMemoIx({ memo, signer }: { memo: string; signer: PublicKey }) {
         const ix = new TransactionInstruction({
             keys: [{ pubkey: signer, isSigner: true, isWritable: true }],
@@ -99,14 +130,24 @@ export class TransactionBuilder {
         return this;
     }
 
-    public addComputeBudgetIx({ units }: { units: number }) {
-        const ix = ComputeBudgetProgram.requestUnits({
-            units,
-            additionalFee: 0
+    public addComputeBudgetIx({ 
+        units, 
+        priceInMicroLamports
+    }: { 
+        units: number; 
+        priceInMicroLamports: number;
+    }) {
+        const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
+            units
         });
-        this._instructions.unshift(ix);
+        const addPriorityFee = ComputeBudgetProgram.setComputeUnitPrice({
+            microLamports: priceInMicroLamports
+        });
+        this._instructions.unshift(modifyComputeUnits, addPriorityFee);
         return this;
     }
+
+    
 
     public addIx(instruction: TransactionInstruction | TransactionInstruction[]): TransactionBuilder {
         this._instructions = this._instructions.concat(instruction);
