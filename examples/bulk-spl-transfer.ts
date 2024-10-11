@@ -174,9 +174,9 @@ const sender = Keypair.fromSecretKey(
 
           // sign the transaction
           logger.debug(`Signing transaction ${i + 1}`);
-          const signedTx = await wrapper.sign({
-            signer: sender as Signer,
-          });
+          const signedTx = (await wrapper.sign({
+            signers: [sender as Signer],
+          }))[0];
 
           // send and confirm the transaction
           logger.debug(`Sending transaction ${i + 1}`);
